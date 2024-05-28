@@ -1,7 +1,8 @@
 import tester.*;
 import javalib.worldimages.*;
 import javalib.funworld.*;
-import java.awt.Color;
+
+import java.awt.*;
 import java.util.Random;
 
 
@@ -22,7 +23,15 @@ class FishWorld extends World {
         // renders background
         // renders a score / display
         //System.out.println("makeScene: " + this.eric.position.x + ", " + this.eric.position.y);
-        return this.draw(new WorldScene(1600, 950));
+        if (this.eric.outOfLives()) {
+            return this.lastScene("Game Lost");
+        }
+        else if (this.isBiggestFish()) {
+            return this.lastScene("Game Won");
+        }
+        else {
+            return this.draw(new WorldScene(1600, 950));
+        }
     }
 
     public FishWorld onTick() {
@@ -54,15 +63,24 @@ class FishWorld extends World {
         return new FishWorld(this.eric, this.otherFishies.moveFishies(), this.id);
     }
 
-//    public WorldEnd worldEnds() {
-//        // placeholders for now
-//        if (this.eric.outOfLives()) {
-//            return new WorldEnd(true, new WorldScene(500, 500));
-//        }
-//        else {
-//            return new WorldEnd(false, new WorldScene(500, 500));
-//        }
-//    }
+    @Override
+     public WorldScene lastScene(String msg) {
+        if (msg.equals("Game Won")) {
+            return new WorldScene(500, 500)
+                    .placeImageXY(new TextImage("Game Won", 50, Color.BLACK), 250, 250); // with game WOn display and stats
+        }
+        if (msg.equals("Game Lost")){
+            return new WorldScene(500, 500)
+                    .placeImageXY(new TextImage("Game Lost", 50, Color.BLACK), 250, 250); // with game LOST display and stats
+        }
+        else {
+            return new WorldScene(500, 500);
+        }
+    }
+
+    public boolean isBiggestFish() {
+        return this.eric.biggestFish();
+    }
 
     // Generate fish
     FishWorld generateFish() {
@@ -108,14 +126,22 @@ class PlayerFish {
         this.size = size;
         this.score = score;
         this.livesLeft = livesLeft;
-        this.skin = new OverlayOffsetImage(
-                new EllipseImage(this.size * 3, this.size * 2, OutlineMode.SOLID, Color.ORANGE), this.size, 0,
-                (new RotateImage(new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, Color.ORANGE), 270)));
+        this.skin = new OverlayImage(
+                new RectangleImage(this.size * 4, this.size * 2, OutlineMode.OUTLINE, Color.RED),
+                new OverlayOffsetImage(
+                new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, Color.ORANGE), this.size * 2, 0,
+                (new RotateImage(new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, Color.ORANGE), 270))));
     }
 
     // renders eric
     WorldScene drawFish(WorldScene acc) {
         return acc
+                .placeImageXY(new TextImage("Score: " + String.valueOf(this.score), 20, Color.BLACK),  1490, 15)
+                .placeImageXY(new CircleImage(10, OutlineMode.SOLID, Color.BLACK),  800, 80)
+                .placeImageXY(new CircleImage(10, OutlineMode.SOLID, Color.BLACK),  800, 260)
+                .placeImageXY(new CircleImage(10, OutlineMode.SOLID, Color.BLACK),  800, 440)
+                .placeImageXY(new CircleImage(10, OutlineMode.SOLID, Color.BLACK),  800, 620)
+                .placeImageXY(new CircleImage(10, OutlineMode.SOLID, Color.BLACK),  800, 870)
                 .placeImageXY(this.skin, this.position.x, this.position.y);
     }
 
@@ -182,6 +208,10 @@ class PlayerFish {
         return bgFishList.checkCollision(this.position, this.size);
     }
 
+    boolean biggestFish() {
+        return this.size > 80;
+    }
+
 }
 
 class BackgroundFish {
@@ -201,19 +231,19 @@ class BackgroundFish {
 
     // PLACEHOLDER BGFISH MODEL
     WorldImage tinyModel = new OverlayOffsetImage(
-            new EllipseImage(15, 10, OutlineMode.SOLID, Color.GREEN), 5, 0,
+            new EllipseImage(20, 10, OutlineMode.SOLID, Color.GREEN), 10, 0,
             (new RotateImage(new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.GREEN), 270)));
     WorldImage smallModel = new OverlayOffsetImage(
-            new EllipseImage(60, 40, OutlineMode.SOLID, Color.RED), 20, 0,
+            new EllipseImage(80, 40, OutlineMode.SOLID, Color.RED), 40, 0,
             (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.GREEN), 270)));
     WorldImage mediumModel = new OverlayOffsetImage(
-            new EllipseImage(120, 80, OutlineMode.SOLID, Color.YELLOW), 40, 0,
+            new EllipseImage(160, 80, OutlineMode.SOLID, Color.YELLOW), 80, 0,
             (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.GREEN), 270)));
     WorldImage largeModel = new OverlayOffsetImage(
-            new EllipseImage(180, 120, OutlineMode.SOLID, Color.BLUE), 60, 0,
+            new EllipseImage(240, 120, OutlineMode.SOLID, Color.BLUE), 120, 0,
             (new RotateImage(new EquilateralTriangleImage(120, OutlineMode.SOLID, Color.GREEN), 270)));
     WorldImage hugeModel = new OverlayOffsetImage(
-            new EllipseImage(240, 160, OutlineMode.SOLID, Color.BLACK), 80, 0,
+            new EllipseImage(320, 160, OutlineMode.SOLID, Color.BLACK), 160, 0,
             (new RotateImage(new EquilateralTriangleImage(160, OutlineMode.SOLID, Color.GREEN), 270)));
 
     BackgroundFish(String name, int id, CartPt position, int size, int speed, int points, WorldImage fishModel) {
@@ -231,32 +261,32 @@ class BackgroundFish {
         this.position = position;
         if (name.equals("Tiny"))  {
             this.size = 5;
-            this.speed = 200;
+            this.speed = 30;
             this.points = 1;;
             this.fishModel = this.tinyModel;
 
         }
         else if (name.equals("Small"))  {
             this.size = 20;
-            this.speed = 200;
+            this.speed = 30;
             this.points = 2;
             this.fishModel = this.smallModel;
         }
         else if (name.equals("Medium"))  {
             this.size = 40;
-            this.speed = 200;
+            this.speed = 30;
             this.points = 3;
             this.fishModel = this.mediumModel;
         }
         else if (name.equals("Large"))  {
             this.size = 60;
-            this.speed = 200;
+            this.speed = 30;
             this.points = 4;
             this.fishModel = this.largeModel;
         }
         else if (name.equals("Huge"))  {
             this.size = 80;
-            this.speed = 200;
+            this.speed = 30;
             this.points = 5;
             this.fishModel = this.hugeModel;
         }
@@ -295,7 +325,7 @@ class BackgroundFish {
     }
 
     BackgroundFish moveBGFish() {
-        int X = this.position.x + this.speed;
+        int X = this.position.x - this.speed;
 
         if (X < 0) X = 1600;
         if (X > 1600) X = 0;
@@ -380,35 +410,35 @@ class MtLoBackgroundFish implements ILoBackgroundFish {
             // Preset bgFish 1/5: tiny
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Tiny", id,  // the y below is a placeholder for all
-                            new CartPt(rand.nextInt(1600), 5)),
+                            new CartPt(rand.nextInt(1600), 80)),
                             this);
         }
         if (20 < randomNum && randomNum <= 40) {
             // Preset bgFish 2/5: small
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Small", id,
-                            new CartPt(rand.nextInt(1600), 10)),
+                            new CartPt(rand.nextInt(1600), 260)),
                             this);
         }
         if (40 < randomNum && randomNum <= 60) {
             // Preset bgFish 3/5: medium
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Medium", id,
-                            new CartPt(rand.nextInt(1600), 15)),
+                            new CartPt(rand.nextInt(1600), 440)),
                             this);
         }
         if (60 < randomNum && randomNum <= 80) {
             // Preset bgFish 4/5: large
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Large", id,
-                            new CartPt(rand.nextInt(1600), 20)),
+                            new CartPt(rand.nextInt(1600), 620)),
                             this);
         }
         if (80 < randomNum && randomNum <= 100) {
             // Preset bgFish 5/5: huge
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Huge", id,
-                            new CartPt(rand.nextInt(1600), 25)),
+                            new CartPt(rand.nextInt(1600), 870)),
                             this);
         }
         else {
@@ -461,35 +491,35 @@ class ConsLoBackgroundFish implements ILoBackgroundFish {
             // Preset bgFish 1/5: tiny
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Tiny", id,  // the y below is a placeholder for all
-                            new CartPt(rand.nextInt(1600), 50)),
+                            new CartPt(rand.nextInt(1600), 80)),
                             this);
         }
         if (20 < randomNum && randomNum <= 40) {
             // Preset bgFish 2/5: small
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Small", id,
-                            new CartPt(rand.nextInt(1600), 200)),
+                            new CartPt(rand.nextInt(1600), 260)),
                             this);
         }
         if (40 < randomNum && randomNum <= 60) {
             // Preset bgFish 3/5: medium
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Medium", id,
-                            new CartPt(rand.nextInt(1600), 350)),
+                            new CartPt(rand.nextInt(1600), 440)),
                             this);
         }
         if (60 < randomNum && randomNum <= 80) {
             // Preset bgFish 4/5: large
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Large", id,
-                            new CartPt(rand.nextInt(1600), 500)),
+                            new CartPt(rand.nextInt(1600), 620)),
                             this);
         }
         if (80 < randomNum && randomNum <= 100) {
             // Preset bgFish 5/5: huge
             return new ConsLoBackgroundFish
                     (new BackgroundFish("Huge", id,
-                            new CartPt(rand.nextInt(1600), 750)),
+                            new CartPt(rand.nextInt(1600), 870)),
                             this);
         }
         else {
@@ -603,7 +633,7 @@ class ExamplesFishWorldProgram {
         FishWorld fw = FishWorld1;
         int worldWidth = 1600;
         int worldHeight = 950;
-        double tickRate = 1;
+        double tickRate = 0.25;
         return fw.bigBang(worldWidth, worldHeight, tickRate);
     }
     boolean testCollision(Tester t) {
