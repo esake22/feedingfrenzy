@@ -104,6 +104,10 @@ class FishWorld extends World {
     }
   }
 
+//  public FishWorld onTickForTesting() {
+//
+//  }
+
   // move the fish around the scene if an arrow key is pressed
   public FishWorld onKeyEvent(String key) {
     PlayerFish movedEric = this.eric.moveFish(key);
@@ -667,21 +671,20 @@ class MtLoBackgroundFish implements ILoBackgroundFish {
   // 'generates' a new bgfish randomly
   public ILoBackgroundFish addToLoBG(int id, PlayerFish pf) {
     // can be abstracted
-    Random randY = new Random();
-    Random randX = new Random();
+    Random rand = new Random();
     int X;
     int Y;
     // ensures that a bg fish won't spawn directly ontop of the Playerfish
-    if (randX.nextBoolean()) {
-      X = (randX.nextInt(pf.position.x) - (pf.size * 4 + 50)) % 1600;
+    if (rand.nextBoolean()) {
+      X = (rand.nextInt(pf.position.x) - (pf.size * 4 + 50)) % 1600;
     }
     else {
-      X = (randX.nextInt(1600) + (pf.size * 4 + 50) + pf.position.x) % 1600;
+      X = (rand.nextInt(1600) + (pf.size * 4 + 50) + pf.position.x) % 1600;
     }
-    if (randY.nextBoolean())
-      Y = (randY.nextInt(pf.position.y) - (pf.size * 2 + 25)) % 950;
+    if (rand.nextBoolean())
+      Y = (rand.nextInt(pf.position.y) - (pf.size * 2 + 25)) % 950;
     else {
-      Y = (randY.nextInt(950) + (pf.size * 2 + 25) + pf.position.y) % 950;
+      Y = (rand.nextInt(950) + (pf.size * 2 + 25) + pf.position.y) % 950;
     }
 
     return new ConsLoBackgroundFish(
@@ -1321,15 +1324,37 @@ class ExamplesFishWorldProgram {
   FishWorld fwFreebie = new FishWorld(pFish1, loFreebie1, 20, 0, this.snacks1);
 
 
-  boolean testBigBang(Tester t) {
-    FishWorld fw = FishWorld1;
-    int worldWidth = 1600;
-    int worldHeight = 950;
-    double tickRate = 0.1;
-    return fw.bigBang(worldWidth, worldHeight, tickRate);
-  }
+//  boolean testBigBang(Tester t) {
+//    FishWorld fw = FishWorld1;
+//    int worldWidth = 1600;
+//    int worldHeight = 950;
+//    double tickRate = 0.1;
+//    return fw.bigBang(worldWidth, worldHeight, tickRate);
+//  }
 
   // FishWorld Tests
+  boolean testOnKeyEvent(Tester t){
+    return t.checkExpect(this.fw0.onKeyEvent("up"),
+            new FishWorld(new PlayerFish(new CartPt(300, 10),
+                    pFish1.size, pFish1.score, pFish1.speed,
+                    pFish1.livesLeft, pFish1.direction), fw0.otherFishies,
+                    fw0.id, fw0.clockTick, fw0.snacks))
+            && t.checkExpect(this.fw0.onKeyEvent("down"),
+            new FishWorld(new PlayerFish(new CartPt(300, 30),
+                    pFish1.size, pFish1.score, pFish1.speed,
+                    pFish1.livesLeft, pFish1.direction), fw0.otherFishies,
+                    fw0.id, fw0.clockTick, fw0.snacks))
+            && t.checkExpect(this.fw0.onKeyEvent("left"),
+            new FishWorld(new PlayerFish(new CartPt(290, 20),
+                    pFish1.size, pFish1.score, pFish1.speed,
+                    pFish1.livesLeft, pFish1.direction), mt,
+                    20, 0, fw0.snacks))
+            && t.checkExpect(this.fw0.onKeyEvent("right"),
+            new FishWorld(new PlayerFish(new CartPt(310, 20),
+                    5, 0, 10,
+                    3, 0), mt,
+                    20, 0, fw0.snacks));
+  }
 
   boolean testMoveFishiesFW(Tester t) {
     return t.checkExpect(this.fw0.moveFishiesFW(), fw0)
