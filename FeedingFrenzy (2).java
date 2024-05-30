@@ -6,18 +6,18 @@ import javalib.funworld.*;
 import java.awt.*;
 import java.util.Random;
 
+// class to represent worldstate
 class FishWorld extends World {
-  PlayerFish eric;
-  ILoBackgroundFish otherFishies;
-  int id;
+  PlayerFish eric; // the player fish
+  ILoBackgroundFish otherFishies; // the background fish
+  int id; // the current id to make new snacks and bg fish
   int clockTick; // added clock tick for more control over timing of generation and life loss
-  ILoSnacks snacks;
-  // should these be instantiated here or in the constructor? for abstraction
-  // here should be fine? - eric
-  int windowW;
-  int windowH;
+  ILoSnacks snacks; // the snacks
+  int windowW; // the width of the window
+  int windowH; // the height of the window
 
-  FishWorld(PlayerFish eric, ILoBackgroundFish otherFishies, int id, int clockTick, ILoSnacks snacks) {
+  FishWorld(PlayerFish eric, ILoBackgroundFish otherFishies, int id, int clockTick,
+      ILoSnacks snacks) {
     this.eric = eric;
     this.otherFishies = otherFishies;
     this.id = id;
@@ -26,40 +26,6 @@ class FishWorld extends World {
     this.windowW = 1600;
     this.windowH = 950;
   }
-  /*
-   * Template: Fields:
-   * this.id ... int
-   * this.eric ... PlayerFish
-   * this.otherFishies ... ILoBackGroundFish
-   * this.windowW ... int
-   * this.windowH ... int
-   * 
-   * Methods:
-   * this.makeScene() ... WorldScene
-   * this.onTick() ... FishWorld
-   * this.onKeyEvent(String) ... FishWorld
-   * this.draw(WorldScene) ... WorldScene
-   * this.lastScene(String) ... WorldScene
-   * this.moveFishiesFW() ... FishWorld
-   * this.generateFish() ... FishWorld
-   * this.caneat(ILoBackgroundFish) ... FishWorld
-   * this.returnCollidedFish() ... ILoBackgroundFish
-   * this.canEatHelper(BackgroundFish) ... FishWorld
-   * this.updateClock ... FishWorld
-   * this.generateFreebie ... FishWorld
-   * -- SNACK METHODS ---
-   *
-   *
-   * Methods on Fields:
-   * this.otherFishies.eat(BackgroundFish) ... ILoBackgroundFish
-   * this.otherFishies.drawBGfish ... WorldScene
-   * this.otherFishies.moveFishies ... ILoBackgroundFish
-   * this.otherFishies.addToLoBG(int, PlayerFish) ... ILoBackgroundFish
-   * this.otherFishies.maxSpawn ... boolean
-   * this.otherFishies.countGameFish ... int
-   * this.otherFishies.addFreebie ... ILoBackgroundFish
-   * this.otherFishies.isBossDead ... boolean
-   */
 
   // renders the current scene with the playerfish, background fish, snacks, and
   // score display
@@ -74,13 +40,11 @@ class FishWorld extends World {
       return this.lastScene("Game Won");
     }
     else {
-      return this.draw(new WorldScene(windowW, windowH)
-              .placeImageXY
-                      (new RectangleImage
-                              (windowW, windowH, OutlineMode.SOLID, Color.CYAN),
-                              windowW / 2, windowH / 2))
-              .placeImageXY
-                      (new TextImage(String.valueOf(this.clockTick), 50, Color.BLACK), 1500,30);
+      return this
+          .draw(new WorldScene(windowW, windowH).placeImageXY(
+              new RectangleImage(windowW, windowH, OutlineMode.SOLID, Color.CYAN), windowW / 2,
+              windowH / 2))
+          .placeImageXY(new TextImage(String.valueOf(this.clockTick), 50, Color.BLACK), 1500, 30);
     }
   }
 
@@ -90,23 +54,24 @@ class FishWorld extends World {
   // generation of bg fish (generateFish, generateFreebie)
   // ticks elapsed in program (updateClock)
   public FishWorld onTick() {
-    if (this.clockTick % 50 == 0 && !this.otherFishies.maxSpawn()) { // generates new fish every 100 ticks
-      return this.generateFish().moveFishiesFW().canEat(this.returnCollidedFish())
+    if (this.eric.outOfLives()) {
+      return this;
+    }
+    else if (this.clockTick % 50 == 0 && !this.otherFishies.maxSpawn()) { // generates new fish
+                                                                          // every 100 ticks
+      return this.updateTicksWorld().generateFish().moveFishiesFW()
+          .canEat(this.returnCollidedFish()).generateSnacks()
           .handleSnackCollision(this.returnCollidedSnacks()).updateClock();
     }
     else if (this.clockTick % 40 == 0) {
-      return this.moveFishiesFW().canEat(this.returnCollidedFish())
-              .handleSnackCollision(this.returnCollidedSnacks()).generateFreebie().updateClock();
+      return this.updateTicksWorld().moveFishiesFW().canEat(this.returnCollidedFish())
+          .handleSnackCollision(this.returnCollidedSnacks()).generateFreebie().updateClock();
     }
     else {
-      return this.moveFishiesFW().canEat(this.returnCollidedFish())
-              .handleSnackCollision(this.returnCollidedSnacks()).updateClock();
+      return this.updateTicksWorld().moveFishiesFW().canEat(this.returnCollidedFish())
+          .handleSnackCollision(this.returnCollidedSnacks()).updateClock();
     }
   }
-
-//  public FishWorld onTickForTesting() {
-//
-//  }
 
   // move the fish around the scene if an arrow key is pressed
   public FishWorld onKeyEvent(String key) {
@@ -148,14 +113,15 @@ class FishWorld extends World {
 
   // moves the entire list of background fish
   public FishWorld moveFishiesFW() {
-    return new FishWorld(this.eric, this.otherFishies.moveFishiesList(), this.id, this.clockTick, this.snacks);
+    return new FishWorld(this.eric, this.otherFishies.moveFishiesList(), this.id, this.clockTick,
+        this.snacks);
   }
 
   // spawns in additional background fish
   FishWorld generateFish() {
     Random rand = new Random();
-    return new FishWorld(this.eric, otherFishies.addToLoBG(this.id + 1, this.eric), this.id + 1, this.clockTick + 1,
-        this.snacks);
+    return new FishWorld(this.eric, otherFishies.addToLoBG(this.id + 1, this.eric), this.id + 1,
+        this.clockTick + 1, this.snacks);
   }
 
   // takes in a list of bg fish that collided with the player fish
@@ -171,12 +137,12 @@ class FishWorld extends World {
     return this.eric.checkCollision(this.otherFishies);
   }
 
-  // COME BACK TO THIS
+  // handles snack collision and returns updated fishworld
   FishWorld handleSnackCollision(ILoSnacks collidedSnacks) {
     return collidedSnacks.snackUpdate(this);
   }
 
-  // COME BACK TO THIS
+  // returns a list of collided snacks
   ILoSnacks returnCollidedSnacks() {
     return this.snacks.checkSnackCollision(this.eric);
   }
@@ -186,100 +152,105 @@ class FishWorld extends World {
     return new FishWorld(this.eric, this.otherFishies, this.id, this.clockTick + 1, this.snacks);
   }
 
+  // updates the fishworld for the 'tick' grace period
+  FishWorld updateTicksWorld() {
+    return new FishWorld(this.eric.updateTicks(), this.otherFishies, this.id, this.clockTick,
+        this.snacks);
+  }
+
   // generates a bg fish that is always size 5, aka always edible
   FishWorld generateFreebie() {
-    return new FishWorld(this.eric, this.otherFishies.addFreebie(this.id + 1), this.id + 1, this.clockTick + 1, this.snacks);
+    return new FishWorld(this.eric, this.otherFishies.addFreebie(this.id + 1), this.id + 1,
+        this.clockTick + 1, this.snacks);
   }
 
   // updates the fishworld based on if the given background fish (which the
   // playerfish has collided with) will be eaten or not
   FishWorld canEatHelper(BackgroundFish otherFish) {
     if (otherFish.compareFishes(this.eric)) { // will return true when this fish CAN EAT
-      return new FishWorld(this.eric.ateFishUpdate(otherFish), otherFishies.eat(otherFish), this.id, this.clockTick,
-              this.snacks);
+      return new FishWorld(this.eric.ateFishUpdate(otherFish), otherFishies.eat(otherFish), this.id,
+          this.clockTick, this.snacks);
     }
     else {
       // If the BG fish is bigger, it'll remove a life from
       // the world state and determine if the game is over
-      return new FishWorld(this.eric.updateLives(-1), otherFishies, this.id, this.clockTick, this.snacks);
+      return new FishWorld(this.eric.updateLives(-1), otherFishies, this.id, this.clockTick,
+          this.snacks);
     }
+  }
+
+  // generates snacks
+  public FishWorld generateSnacks() {
+    Random rand = new Random();
+    return new FishWorld(this.eric, this.otherFishies, this.id++, this.clockTick,
+        this.snacks.generateSnack(rand.nextInt(100), this.id));
   }
 
   // updates the fishworld based on the eaten snack
   FishWorld snackUpdateHelper(ASnack snack) {
-    return new FishWorld(snack.applyEffect(this.eric), this.otherFishies, this.id, this.clockTick, this.snacks.eatSnack(snack));
+    return new FishWorld(snack.applyEffect(this.eric), this.otherFishies, this.id, this.clockTick,
+        this.snacks.eatSnack(snack));
   }
 }
 
+// class to represent the playerfish
 class PlayerFish {
   CartPt position; // position of the fish on the world scene
-  int size; // size of the fish, used for edible calculations and to determine size of world image model
+  int size; // size of the fish, used for edible calculations and to determine size of world
+            // image model
   int score; // total points earned by the player
   int speed; // how quickly the player moves across the world scene
   int livesLeft; // how many times the player can touch a fish bigger than it // eat bad snack
   int direction; // which way (on x axis) fish is moving
+  int immunityTicks; // grace period between losing lives
   WorldImage skin; // world image depiction of fish
 
-  PlayerFish(CartPt position, int size, int score, int speed, int livesLeft, int direction) {
+  PlayerFish(CartPt position, int size, int score, int speed, int livesLeft, int direction,
+      int immunityTicks) {
     this.position = position;
     this.size = size;
     this.score = score;
     this.speed = speed;
     this.livesLeft = livesLeft;
+    this.immunityTicks = immunityTicks;
     if (direction == 0) {
-      this.skin = new OverlayImage(
-          new RectangleImage(this.size * 4, this.size * 2, OutlineMode.OUTLINE, Color.RED),
+      this.skin =
           new OverlayOffsetImage(
               new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, Color.ORANGE),
               this.size * 1.5, 0,
               (new RotateImage(
                   new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, Color.ORANGE),
-                  270))));
+                  270)));
     }
     else {
-      this.skin = new OverlayImage(
-          new RectangleImage(this.size * 4, this.size * 2, OutlineMode.OUTLINE, Color.RED),
-          new OverlayOffsetImage(
+      this.skin = new OverlayOffsetImage(
               new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, Color.ORANGE),
               (this.size * -1.5), 0,
               (new RotateImage(
                   new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, Color.ORANGE),
-                  -270))));
+                  -270)));
     }
   }
-  /* Template
-   * Fields:
-   * this.position ... CartPt
-   * this.size ... int
-   * this.score ... int
-   * this.speed ... int
-   * this.livesLeft ... int
-   * this.direction ... int
-   * this.skin ... WorldImage
-   *
-   * Methods:
-   *
-   * this.drawfish ... WorldScene
-   * this.moveFish ... PlayerFish
-   * this.ateFishUpdate ... PlayerFish
-   * this.compareFishesHelp(int) ... boolean
-   * this.updateLives(int) ... PlayerFish
-   * this.outOfLives() ... boolean
-   * this.checkCollision(ILoBackgroundFish) ... ILoBackgroundFish
-   * this.getStats ... String
-   * this.eatSnack ... PlayerFish
-   * this.checkSnackCollision ... boolean
-   * this.applyEffect ... PlayerFish
-   * Methods on Fields:
-   * 
-   */
+
+  PlayerFish(CartPt position, int size, int score, int speed, int livesLeft, int direction,
+      int immunityTicks, WorldImage skin) {
+    this.position = position;
+    this.size = size;
+    this.score = score;
+    this.speed = speed;
+    this.livesLeft = livesLeft;
+    this.direction = direction;
+    this.immunityTicks = immunityTicks;
+    this.skin = skin;
+  }
 
   // draws the playerfish on top of a given worldscene
   WorldScene drawFish(WorldScene acc) {
-    return acc
-            .placeImageXY(this.skin, this.position.x, this.position.y)
-            .placeImageXY(new TextImage("Score: " + String.valueOf(this.score), 20, Color.BLACK), 1300, 15)
-            .placeImageXY(new TextImage("Lives: " + String.valueOf(this.livesLeft), 20, Color.BLACK), 1400, 15);
+    return acc.placeImageXY(this.skin, this.position.x, this.position.y)
+        .placeImageXY(new TextImage("Score: " + String.valueOf(this.score), 20, Color.BLACK), 1300,
+            15)
+        .placeImageXY(new TextImage("Lives: " + String.valueOf(this.livesLeft), 20, Color.BLACK),
+            1400, 15);
   }
 
   // handles keys pressed and moves the playerfish accordingly
@@ -311,14 +282,16 @@ class PlayerFish {
     if (Y > 950)
       Y = 0;
 
-    return new PlayerFish(new CartPt(X, Y), this.size, this.score, this.speed, this.livesLeft, dir);
+    return new PlayerFish(new CartPt(X, Y), this.size, this.score, this.speed, this.livesLeft, dir,
+        this.immunityTicks);
   }
 
   // updates the playerfish when it properly eats another fish (size and score
   // update)
   PlayerFish ateFishUpdate(BackgroundFish otherFish) {
     return new PlayerFish(this.position, otherFish.calculateSizeGained(this.size),
-        otherFish.calculateScoreGained(this.score), this.speed, this.livesLeft, this.direction);
+        otherFish.calculateScoreGained(this.score), this.speed, this.livesLeft, this.direction,
+        this.immunityTicks);
   }
 
   // checks if the size of this PlayerFish is greater than a BackgroundFish
@@ -328,8 +301,24 @@ class PlayerFish {
 
   // updates the lives of the playerfish based on a given change
   PlayerFish updateLives(int updateAmt) {
-    return new PlayerFish(this.position, this.size, this.score, this.speed,
-        updateAmt + this.livesLeft, this.direction);
+    if (this.immunityTicks > 0) {
+      return this;
+    }
+    else {
+      return new PlayerFish(this.position, this.size, this.score, this.speed,
+          updateAmt + this.livesLeft, this.direction, 10); // change ticks later
+    }
+  }
+
+  // updates the ticks the pf has for grace period between losing lives
+  PlayerFish updateTicks() {
+    if (this.immunityTicks > 0) {
+      return new PlayerFish(this.position, this.size, this.score, this.speed, this.livesLeft,
+          this.direction, this.immunityTicks - 1);
+    }
+    else {
+      return this;
+    }
   }
 
   // checks if the playerfish is out of lives
@@ -338,7 +327,8 @@ class PlayerFish {
   }
 
   // returns a list of background fish that are colliding with the playerfish
-  // returns multiple fish in case collision with multiple fish happens on same tick
+  // returns multiple fish in case collision with multiple fish happens on same
+  // tick
   ILoBackgroundFish checkCollision(ILoBackgroundFish bgFishList) {
     return bgFishList.checkCollision(this.position, this.size);
   }
@@ -348,10 +338,10 @@ class PlayerFish {
     return "Score: " + this.score + " Lives Left: " + this.livesLeft;
   }
 
-//  // COME BACK TO THIS
-//  PlayerFish eatSnack(ASnack snack) {
-//    return snack.applyEffect(this);
-//  }
+  // returns the playerfish with the updated snack effect
+  PlayerFish eatSnack(ASnack snack) {
+    return snack.applyEffect(this);
+  }
 
   // Method to check collision with a snack
   boolean checkSnackCollision(ASnack snack) {
@@ -380,39 +370,11 @@ class BackgroundFish {
     this.direction = direction;
     this.fishModel = fishModel;
   }
-  /*
-   * Template
-   *
-   * Fields:
-   * this.id ... int
-   * this.position ... CartPt
-   * this.size ... int
-   * this.speed ... int
-   * this.points ... int
-   * this.direction ... int
-   * this.fishModel ... WorldImage
-   *
-   * Methods:
-   *
-   * this.calculateSizeGained(int) ... int
-   * this.calculateScoreGained(int) ... int
-   * this.compareFishes(PlayerFish) ... boolean
-   * this.fishMatch(BackgroundFish) ... boolean
-   * this.fishMatchHelper(int) ... boolean
-   * this.drawBGfish(WorldScene) ... WorldScene
-   * this.moveBGFish() ... BackgroundFish
-   * this.checkCollisionHelper(CartPT, double) ... boolean
-   * this.isFreebie ... boolean
-   * this.isFishboss ... boolean
-   * 
-   * Methods on Fields:
-   *
-   * none
-   */
 
   BackgroundFish(int id, CartPt position) {
     this.id = id;
-    // random position of where bg fish is placed is determined in addToLoBG in FishWorld
+    // random position of where bg fish is placed is determined in addToLoBG in
+    // FishWorld
     this.position = position;
     Random rand = new Random();
     // rolls a number between 0 - 99 inclusive to determine which category of
@@ -462,22 +424,20 @@ class BackgroundFish {
     this.direction = rand.nextInt(2);
     // determines which model will be used to represent the BG fish
     if (this.direction == 0) {
-      this.fishModel =
-              new OverlayImage(
-                      new RectangleImage(this.size * 4, this.size * 2, OutlineMode.OUTLINE, Color.RED),
-                      new OverlayOffsetImage(
-                              new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, colorName), this.size * 1.5, 0,
-                              (new RotateImage(new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, colorName),
-                                      270))));
+      this.fishModel = new OverlayOffsetImage(
+              new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, colorName),
+              this.size * 1.5, 0,
+              (new RotateImage(
+                  new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, colorName),
+                  270)));
     }
     else {
-      this.fishModel =
-              new OverlayImage(
-                      new RectangleImage(this.size * 4, this.size * 2, OutlineMode.OUTLINE, Color.RED),
-                      new OverlayOffsetImage(
-                              new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, colorName), this.size * -1.5, 0,
-                              (new RotateImage(new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, colorName),
-                                      -270))));
+      this.fishModel = new OverlayOffsetImage(
+              new EllipseImage(this.size * 4, this.size * 2, OutlineMode.SOLID, colorName),
+              this.size * -1.5, 0,
+              (new RotateImage(
+                  new EquilateralTriangleImage(this.size * 2, OutlineMode.SOLID, colorName),
+                  -270)));
     }
   }
 
@@ -577,6 +537,7 @@ class BackgroundFish {
     return bgX2 < pfX1 && bgX1 > pfX2 && bgY2 < pfY1 && bgY1 > pfY2;
   }
 
+  // helper for the 'freebie' first fish
   boolean isFreebie() {
     return this.size == 5;
   }
@@ -616,6 +577,7 @@ interface ILoBackgroundFish {
 
   // generates a tiny fish that can be eaten by the player no matter size
   ILoBackgroundFish addFreebie(int id);
+
   //
   boolean isBossDead();
 }
@@ -625,20 +587,12 @@ class MtLoBackgroundFish implements ILoBackgroundFish {
   MtLoBackgroundFish() {
   }
   /*
-   * Template
-   * Fields:
-   * Methods:
-   * this.eat ... ILoBackground
-   * this.drawBGfish ... WorldScene
-   * this.checkCollision ... ILoBackgroundFish
-   * this.collisionUpdate ... FishWorld
-   * this.moveFishies ... ILoBackgroundFish
-   * this.addToLoBG(int, PlayerFish) ... ILoBackgroundFish
-   * this.maxSpawn ... boolean
-   * this.countGameFish ... int
-   * this.addFreebie ... ILoBackgroundFish
-   * this.isBossDead ... boolean
-   * Fields of Methods:
+   * Template Fields: Methods: this.eat ... ILoBackground this.drawBGfish ...
+   * WorldScene this.checkCollision ... ILoBackgroundFish this.collisionUpdate ...
+   * FishWorld this.moveFishies ... ILoBackgroundFish this.addToLoBG(int,
+   * PlayerFish) ... ILoBackgroundFish this.maxSpawn ... boolean
+   * this.countGameFish ... int this.addFreebie ... ILoBackgroundFish
+   * this.isBossDead ... boolean Fields of Methods:
    * 
    * 
    */
@@ -687,8 +641,7 @@ class MtLoBackgroundFish implements ILoBackgroundFish {
       Y = (rand.nextInt(950) + (pf.size * 2 + 25) + pf.position.y) % 950;
     }
 
-    return new ConsLoBackgroundFish(
-            new BackgroundFish(id, new CartPt(X, Y)), this);
+    return new ConsLoBackgroundFish(new BackgroundFish(id, new CartPt(X, Y)), this);
   }
 
   // checks to see if max number of fish are generated in the world
@@ -703,25 +656,25 @@ class MtLoBackgroundFish implements ILoBackgroundFish {
 
   // generates a fish that can be eaten at any playerfish size
   public ILoBackgroundFish addFreebie(int id) {
-      Random randX = new Random();
-      Random randY = new Random();
-      Random randDir = new Random();
-      return new ConsLoBackgroundFish(new BackgroundFish (id, new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, randDir.nextInt(1),
-              new OverlayOffsetImage(
-                      new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE),
-                      7.5, 0,
-                      (new RotateImage(
-                              new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
-                              270)))), this);
+    Random randX = new Random();
+    Random randY = new Random();
+    Random randDir = new Random();
+    return new ConsLoBackgroundFish(new BackgroundFish(id,
+        new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, randDir.nextInt(1),
+        new OverlayOffsetImage(new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE), 7.5, 0,
+            (new RotateImage(new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
+                270)))),
+        this);
   }
+
+  // returns true because if there are no fish left, the boss must be dead!
   public boolean isBossDead() {
     return true;
   }
 }
 
+// class for non empty list of fish
 class ConsLoBackgroundFish implements ILoBackgroundFish {
-  // fields
-  //
   BackgroundFish first;
   ILoBackgroundFish rest;
 
@@ -729,34 +682,6 @@ class ConsLoBackgroundFish implements ILoBackgroundFish {
     this.first = first;
     this.rest = rest;
   }
-
-  /* Template
-  * Fields
-  * this.first ... BackgroundFish
-  * this.rest ... ILoBackgroundFish
-  *
-  * Methods
-  * this.eat(BackgroundFish) ... ILoBackgroundFish
-  * this.drawBGfish ... WorldScene
-  * this.moveFishiesList ... ILoBackgroundFish
-  * this.addToLoBG(int, PlayerFish) ... ILoBackgroundFish
-  * this.maxSpawn ... boolean
-  * this.countGameFish ... int
-  * this.addFreebie ... ILoBackgroundFish
-  * this.isBossDead ... boolean
-  *
-  * Fields of Methods
-  * this.first.calculateSizeGained(int) ... int
-  * this.first.calculateScoreGained(int) ... int
-  * this.first.compareFishes(PlayerFish) ... boolean
-  * this.first.fishMatch(BackgroundFish) ... boolean
-  * this.first.fishMatchHelper(int) ... boolean
-  * this.first.drawBGfish(WorldScene) ... WorldScene
-  * this.first.moveBGFish() ... BackgroundFish
-  * this.first.checkCollisionHelper(CartPT, double) ... boolean
-  * this.first.isFreebie ... boolean
-  * this.first.isFishboss ... boolean
-  */
 
   // return the same list with the given fishie removed
   public ILoBackgroundFish eat(BackgroundFish otherFish) {
@@ -797,8 +722,7 @@ class ConsLoBackgroundFish implements ILoBackgroundFish {
       Y = (randY.nextInt(950) + (pf.size * 2 + 25) + pf.position.y) % 950;
     }
 
-      return new ConsLoBackgroundFish(
-              new BackgroundFish(id, new CartPt(X, Y)), this);
+    return new ConsLoBackgroundFish(new BackgroundFish(id, new CartPt(X, Y)), this);
   }
 
   // goes through a list of bg fish and returns any that are colliding with
@@ -833,37 +757,39 @@ class ConsLoBackgroundFish implements ILoBackgroundFish {
     return this.countGameFish() == 20;
   }
 
+  // adds a free starting fish so that the game is always playable
   public ILoBackgroundFish addFreebie(int id) {
-      Random randX = new Random();
-      Random randY = new Random();
-      Random randDir = new Random();
-      int dir = randDir.nextInt(2);
-      if (dir == 0) {
-        return new ConsLoBackgroundFish(new BackgroundFish(id, new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, dir,
-                new OverlayOffsetImage(
-                        new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE),
-                        7.5, 0,
-                        (new RotateImage(
-                                new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
-                                270)))), this);
-      }
+    Random randX = new Random();
+    Random randY = new Random();
+    Random randDir = new Random();
+    int dir = randDir.nextInt(2);
+    if (dir == 0) {
+      return new ConsLoBackgroundFish(
+          new BackgroundFish(id, new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, dir,
+              new OverlayOffsetImage(new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE), 7.5,
+                  0,
+                  (new RotateImage(
+                      new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE), 270)))),
+          this);
+    }
 
-      else {
-        return new ConsLoBackgroundFish(new BackgroundFish(id, new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, dir,
-                new OverlayOffsetImage(
-                        new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE),
-                        -7.5, 0,
-                        (new RotateImage(
-                                new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
-                                -270)))), this);
-      }
+    else {
+      return new ConsLoBackgroundFish(
+          new BackgroundFish(id, new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, dir,
+              new OverlayOffsetImage(new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE),
+                  -7.5, 0,
+                  (new RotateImage(
+                      new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE), -270)))),
+          this);
+    }
   }
 
   // determines if the list contains the boss, if it doesn't then the boss is dead
   public boolean isBossDead() {
     if (this.first.isFishBoss()) {
       return false;
-    } else {
+    }
+    else {
       return this.rest.isBossDead();
     }
   }
@@ -873,20 +799,19 @@ class ConsLoBackgroundFish implements ILoBackgroundFish {
 abstract class ASnack {
   int id;
   CartPt position;
+  Random rand;
   WorldImage model;
 
   ASnack(int id, CartPt position) {
     this.id = id;
     this.position = position;
   }
-  /*
-   * template Fields:
-   * 
-   * Methods:
-   * 
-   * Methods on Fields:
-   * 
-   */
+
+  ASnack(int id, CartPt position, Random rand) {
+    this.id = id;
+    this.position = position;
+    this.rand = rand;
+  }
 
   // checks if the given snack (other) matches this snack
   public boolean snackMatch(ASnack other) {
@@ -934,9 +859,6 @@ class SpeedSnacks extends ASnack {
   SpeedSnacks(int id, CartPt position) {
     super(id, position);
   }
-  /*
-   * template
-   */
 
   // draws this snack on a given worldscene
   public WorldScene drawSnacks(WorldScene acc) {
@@ -944,9 +866,9 @@ class SpeedSnacks extends ASnack {
   }
 
   // applies the effect of a snack eaten by the playerFish
-  public PlayerFish applyEffect (PlayerFish pf) {
-    return new PlayerFish(this.position, pf.size, pf.score,
-            pf.speed + this.speedBoost, pf.livesLeft, pf.direction);
+  public PlayerFish applyEffect(PlayerFish pf) {
+    return new PlayerFish(this.position, pf.size, pf.score, pf.speed + this.speedBoost,
+        pf.livesLeft, pf.direction, pf.immunityTicks);
   }
 }
 
@@ -960,9 +882,6 @@ class BadSnacks extends ASnack {
   BadSnacks(int id, CartPt position) {
     super(id, position);
   }
-  /*
-   * template
-   */
 
   // draws this snack on a given worldscene
   public WorldScene drawSnacks(WorldScene acc) {
@@ -971,8 +890,8 @@ class BadSnacks extends ASnack {
 
   // decreases the size of playerfish when it eats this snack
   public PlayerFish applyEffect(PlayerFish pf) {
-    return new PlayerFish(this.position, pf.size + this.sizeDecrease, pf.score,
-            pf.speed, pf.livesLeft, pf.direction);
+    return new PlayerFish(this.position, pf.size + this.sizeDecrease, pf.score, pf.speed,
+        pf.livesLeft, pf.direction, pf.immunityTicks);
   }
 
 }
@@ -986,9 +905,6 @@ class ScoreSnacks extends ASnack {
   ScoreSnacks(int id, CartPt position) {
     super(id, position);
   }
-  /*
-   * template
-   */
 
   // draws this snack on a given worldscene
   public WorldScene drawSnacks(WorldScene acc) {
@@ -997,8 +913,8 @@ class ScoreSnacks extends ASnack {
 
   // decreases the score of playerfish when it eats this snack
   public PlayerFish applyEffect(PlayerFish pf) {
-    return new PlayerFish(this.position, pf.size, pf.score + this.scoreIncrease,
-            pf.speed, pf.livesLeft, pf.direction);
+    return new PlayerFish(this.position, pf.size, pf.score + this.scoreIncrease, pf.speed,
+        pf.livesLeft, pf.direction, pf.immunityTicks);
   }
 }
 
@@ -1023,10 +939,6 @@ interface ILoSnacks {
 // a class to represent the empty list
 class MtLoSnacks implements ILoSnacks {
 
-  /*
-   * template
-   */
-
   // cannot eat no snacks!
   public ILoSnacks eatSnack(ASnack snack) {
     return this;
@@ -1036,16 +948,16 @@ class MtLoSnacks implements ILoSnacks {
   public ILoSnacks generateSnack(int rand, int id) {
     Random rand2 = new Random();
     if (rand <= 20) { // change the posn
-      return new ConsLoSnacks(new SpeedSnacks(id, new CartPt(rand2.nextInt(), rand2.nextInt())),
-          this);
+      return new ConsLoSnacks(
+          new SpeedSnacks(id, new CartPt(rand2.nextInt(1600), rand2.nextInt(900))), this);
     }
-    else if (rand <= 50) {
-      return new ConsLoSnacks(new BadSnacks(id, new CartPt(rand2.nextInt(), rand2.nextInt())),
-          this);
+    else if (20 > rand && rand <= 50) {
+      return new ConsLoSnacks(
+          new BadSnacks(id, new CartPt(rand2.nextInt(1600), rand2.nextInt(900))), this);
     }
-    else if (rand <= 70) { // change the posn
-      return new ConsLoSnacks(new ScoreSnacks(id, new CartPt(rand2.nextInt(), rand2.nextInt())),
-          this);
+    else if (50 > rand && rand <= 70) { // change the posn
+      return new ConsLoSnacks(
+          new ScoreSnacks(id, new CartPt(rand2.nextInt(1600), rand2.nextInt(900))), this);
     }
     else {
       return this;
@@ -1077,9 +989,6 @@ class ConsLoSnacks implements ILoSnacks {
     this.first = first;
     this.rest = rest;
   }
-  /*
-   * template
-   */
 
   // removes the given snack off this list
   public ILoSnacks eatSnack(ASnack snack) {
@@ -1095,19 +1004,20 @@ class ConsLoSnacks implements ILoSnacks {
   public ILoSnacks generateSnack(int rand, int id) {
     Random rand2 = new Random();
     if (rand <= 20) { // change the posn
-      return new ConsLoSnacks(new SpeedSnacks(id, new CartPt(rand2.nextInt(), rand2.nextInt())),
-          this);
+      return new ConsLoSnacks(
+          new SpeedSnacks(id, new CartPt(rand2.nextInt(1600), rand2.nextInt(900))), this);
     }
-    else if (rand > 20 && rand <= 50) { // change the posn
-      return new ConsLoSnacks(new BadSnacks(id, new CartPt(rand2.nextInt(), rand2.nextInt())),
-          this);
+    else if (20 > rand && rand <= 50) {
+      return new ConsLoSnacks(
+          new BadSnacks(id, new CartPt(rand2.nextInt(1600), rand2.nextInt(900))), this);
     }
-    else if (rand > 40 && rand <= 70) { // change the posn
-      return new ConsLoSnacks(new ScoreSnacks(id, new CartPt(rand2.nextInt(), rand2.nextInt())),
-          this);
+    else if (50 > rand && rand <= 70) { // change the posn
+      return new ConsLoSnacks(
+          new ScoreSnacks(id, new CartPt(rand2.nextInt(1600), rand2.nextInt(900))), this);
     }
-    else
+    else {
       return this;
+    }
   }
 
   // draws this list of snacks on a worldscene
@@ -1125,21 +1035,10 @@ class ConsLoSnacks implements ILoSnacks {
     }
   }
 
-  // NEEDS TO BE FIXED
+  // updates the given fishworld with the snack effects
   public FishWorld snackUpdate(FishWorld world) {
     return this.rest.snackUpdate(world.snackUpdateHelper(this.first));
-
-//    if (world.eric.checkSnackCollision(this.first)) {
-//      PlayerFish newEric = world.eric.eatSnack(this.first);
-//      return new FishWorld(newEric, world.otherFishies, world.id, world.clockTick, this.rest.eat(this.first));
-//    }
-//    else {
-//      FishWorld updatedWorld = this.rest.snackUpdate(world);
-//      return new FishWorld(updatedWorld.eric, updatedWorld.otherFishies, updatedWorld.id, updatedWorld.clockTick,
-//          new ConsLoSnacks(this.first, updatedWorld.snacks));
-//    }
   }
-
 }
 
 class CartPt {
@@ -1153,91 +1052,74 @@ class CartPt {
 }
 
 class ExamplesFishWorldProgram {
-  PlayerFish deadFish = new PlayerFish(new CartPt(300, 300), 50, 0, 10, 3, 0);
-  PlayerFish pilePFish = new PlayerFish(new CartPt(300, 600), 5, 0, 10, 3, 1);
+  PlayerFish deadFish = new PlayerFish(new CartPt(300, 300), 50, 0, 10, 3, 0, 0);
+  PlayerFish pilePFish = new PlayerFish(new CartPt(300, 600), 5, 0, 10, 3, 1, 0);
 
-  PlayerFish pFish1 = new PlayerFish(new CartPt(300, 20), 5, 0, 10, 3, 1);
+  PlayerFish pFish1 = new PlayerFish(new CartPt(300, 20), 5, 0, 10, 3, 1, 0);
 
   // BG Fish Boss <- edit this to change win cond, don't change id
   BackgroundFish fishBoss = new BackgroundFish(999999999, new CartPt(1600, 830), 100, 2, 1000, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(400, 200, OutlineMode.SOLID, Color.BLACK), -150, 0,
-                  (new RotateImage(new EquilateralTriangleImage(200, OutlineMode.SOLID, Color.BLACK),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(400, 200, OutlineMode.SOLID, Color.BLACK), -150, 0,
+          (new RotateImage(new EquilateralTriangleImage(200, OutlineMode.SOLID, Color.BLACK),
+              -270))));
 
   // BG Freebie
-  BackgroundFish freebie = new BackgroundFish(100, new CartPt (0, 0), 5, 20, 1, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE),
-                  7.5, 0,
-                  (new RotateImage(
-                          new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
-                          270))));
+  BackgroundFish freebie = new BackgroundFish(100, new CartPt(0, 0), 5, 20, 1, 1,
+      new OverlayOffsetImage(new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE), 7.5, 0,
+          (new RotateImage(new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
+              270))));
 
   // Huge BG fish
   BackgroundFish hugeFishR = new BackgroundFish(1, new CartPt(0, 0), 70, 10, 70, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(280, 140, OutlineMode.SOLID, Color.RED), -140, 0,
-                  (new RotateImage(new EquilateralTriangleImage(140, OutlineMode.SOLID, Color.RED),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(280, 140, OutlineMode.SOLID, Color.RED), -140, 0,
+          (new RotateImage(new EquilateralTriangleImage(140, OutlineMode.SOLID, Color.RED),
+              -270))));
 
   BackgroundFish hugeFishL = new BackgroundFish(2, new CartPt(0, 0), 70, 10, 70, 0,
-          new OverlayOffsetImage(
-                  new EllipseImage(280, 140, OutlineMode.SOLID, Color.RED), 140, 0,
-                  (new RotateImage(new EquilateralTriangleImage(140, OutlineMode.SOLID, Color.RED),
-                          270))));
+      new OverlayOffsetImage(new EllipseImage(280, 140, OutlineMode.SOLID, Color.RED), 140, 0,
+          (new RotateImage(new EquilateralTriangleImage(140, OutlineMode.SOLID, Color.RED), 270))));
 
   // Large BG Fish
   BackgroundFish largeFishR = new BackgroundFish(3, new CartPt(0, 0), 40, 12, 40, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(160, 80, OutlineMode.SOLID, Color.MAGENTA), -80, 0,
-                  (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.MAGENTA),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(160, 80, OutlineMode.SOLID, Color.MAGENTA), -80, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.MAGENTA),
+              -270))));
 
   BackgroundFish largeFishL = new BackgroundFish(4, new CartPt(0, 0), 40, 12, 40, 0,
-          new OverlayOffsetImage(
-                  new EllipseImage(160, 80, OutlineMode.SOLID, Color.MAGENTA), 80, 0,
-                  (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.MAGENTA),
-                          270))));
+      new OverlayOffsetImage(new EllipseImage(160, 80, OutlineMode.SOLID, Color.MAGENTA), 80, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.MAGENTA),
+              270))));
 
   // Medium BG Fish
   BackgroundFish mediumFishR = new BackgroundFish(5, new CartPt(0, 0), 20, 14, 20, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
-                  (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.BLUE),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.BLUE),
+              -270))));
 
   BackgroundFish mediumFishL = new BackgroundFish(6, new CartPt(0, 0), 20, 14, 20, 0,
-          new OverlayOffsetImage(
-                  new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), 40, 0,
-                  (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.BLUE),
-                          270))));
+      new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), 40, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.BLUE), 270))));
 
   // Small BG Fish
   BackgroundFish smallFishR = new BackgroundFish(7, new CartPt(0, 0), 15, 17, 15, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(60, 30, OutlineMode.SOLID, Color.GREEN), -30, 0,
-                  (new RotateImage(new EquilateralTriangleImage(30, OutlineMode.SOLID, Color.GREEN),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(60, 30, OutlineMode.SOLID, Color.GREEN), -30, 0,
+          (new RotateImage(new EquilateralTriangleImage(30, OutlineMode.SOLID, Color.GREEN),
+              -270))));
 
   BackgroundFish smallFishL = new BackgroundFish(8, new CartPt(0, 0), 15, 17, 15, 0,
-          new OverlayOffsetImage(
-                  new EllipseImage(60, 30, OutlineMode.SOLID, Color.GREEN), 30, 0,
-                  (new RotateImage(new EquilateralTriangleImage(30, OutlineMode.SOLID, Color.GREEN),
-                          270))));
+      new OverlayOffsetImage(new EllipseImage(60, 30, OutlineMode.SOLID, Color.GREEN), 30, 0,
+          (new RotateImage(new EquilateralTriangleImage(30, OutlineMode.SOLID, Color.GREEN),
+              270))));
 
   // Tiny BG Fish
   BackgroundFish tinyFishR = new BackgroundFish(9, new CartPt(0, 0), 10, 20, 10, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(40, 20, OutlineMode.SOLID, Color.PINK), -20, 0,
-                  (new RotateImage(new EquilateralTriangleImage(20, OutlineMode.SOLID, Color.PINK),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(40, 20, OutlineMode.SOLID, Color.PINK), -20, 0,
+          (new RotateImage(new EquilateralTriangleImage(20, OutlineMode.SOLID, Color.PINK),
+              -270))));
 
   BackgroundFish tinyFishL = new BackgroundFish(10, new CartPt(0, 0), 10, 20, 10, 0,
-          new OverlayOffsetImage(
-                  new EllipseImage(40, 20, OutlineMode.SOLID, Color.PINK), 20, 0,
-                  (new RotateImage(new EquilateralTriangleImage(20, OutlineMode.SOLID, Color.PINK),
-                          270))));
+      new OverlayOffsetImage(new EllipseImage(40, 20, OutlineMode.SOLID, Color.PINK), 20, 0,
+          (new RotateImage(new EquilateralTriangleImage(20, OutlineMode.SOLID, Color.PINK), 270))));
 
   // List of BG fish using preset sizes
   ILoBackgroundFish mt = new MtLoBackgroundFish();
@@ -1267,21 +1149,17 @@ class ExamplesFishWorldProgram {
   ILoBackgroundFish loFreebie3 = new ConsLoBackgroundFish(fishBoss, loFreebie2);
 
   BackgroundFish bgFish1 = new BackgroundFish(1, new CartPt(1600, 250), 20, 20, 1, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
-                  (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.BLUE),
-                          -270))));
+      new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
+          (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.BLUE),
+              -270))));
   BackgroundFish bgFish2 = new BackgroundFish(2, new CartPt(1600, 400), 40, 10, 2, 0,
-          new OverlayOffsetImage(
-                  new EllipseImage(160, 80, OutlineMode.SOLID, Color.YELLOW), 80, 0,
-                  (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.YELLOW),
-                          270))));
+      new OverlayOffsetImage(new EllipseImage(160, 80, OutlineMode.SOLID, Color.YELLOW), 80, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.YELLOW),
+              270))));
   BackgroundFish bgFish3 = new BackgroundFish(5, new CartPt(1600, 700), 50, 16, 3, 1,
-          new OverlayOffsetImage(
-                  new EllipseImage(200, 100, OutlineMode.SOLID, Color.GREEN), -100, 0,
-                  (new RotateImage(new EquilateralTriangleImage(100, OutlineMode.SOLID, Color.GREEN),
-                          -270))));
-
+      new OverlayOffsetImage(new EllipseImage(200, 100, OutlineMode.SOLID, Color.GREEN), -100, 0,
+          (new RotateImage(new EquilateralTriangleImage(100, OutlineMode.SOLID, Color.GREEN),
+              -270))));
 
   // pileBgFish1 is directly on top of pFish1 and is smaller than PF
   BackgroundFish pileBgFish1 = new BackgroundFish(3, new CartPt(300, 600));
@@ -1302,14 +1180,20 @@ class ExamplesFishWorldProgram {
 
   // snacks
   ASnack speed1 = new SpeedSnacks(23, new CartPt(90, 90));
+  ASnack speed2 = new SpeedSnacks(24, new CartPt(120, 120));
   ASnack bad1 = new BadSnacks(90, new CartPt(100, 100));
+  ASnack bad2 = new BadSnacks(91, new CartPt(111, 111));
   ASnack score1 = new ScoreSnacks(19, new CartPt(200, 200));
+  ASnack score2 = new ScoreSnacks(20, new CartPt(210, 210));
 
   // lo snacks
   ILoSnacks snacks1 = new ConsLoSnacks(this.speed1,
       new ConsLoSnacks(this.bad1, new ConsLoSnacks(this.score1, new MtLoSnacks())));
-
+  ILoSnacks snacks2 = new ConsLoSnacks(this.speed2,
+      new ConsLoSnacks(this.bad2, new ConsLoSnacks(this.score2, new MtLoSnacks())));
   // used to test gameover
+  ILoSnacks mtsnack = new MtLoSnacks();
+
   FishWorld deadFishWorld = new FishWorld(deadFish, loBgFish1, 1, 0, this.snacks1);
 
   // used to test when a bgfish is directly on top of pf
@@ -1323,62 +1207,64 @@ class ExamplesFishWorldProgram {
   FishWorld fw2 = new FishWorld(pFish1, loBGfish1, 20, 0, this.snacks1);
   FishWorld fwFreebie = new FishWorld(pFish1, loFreebie1, 20, 0, this.snacks1);
 
+  // testing worldScene
+  WorldScene ws = new WorldScene(800, 800);
 
-//  boolean testBigBang(Tester t) {
-//    FishWorld fw = FishWorld1;
-//    int worldWidth = 1600;
-//    int worldHeight = 950;
-//    double tickRate = 0.1;
-//    return fw.bigBang(worldWidth, worldHeight, tickRate);
-//  }
-
-  // FishWorld Tests
-  boolean testOnKeyEvent(Tester t){
-    return t.checkExpect(this.fw0.onKeyEvent("up"),
-            new FishWorld(new PlayerFish(new CartPt(300, 10),
-                    pFish1.size, pFish1.score, pFish1.speed,
-                    pFish1.livesLeft, pFish1.direction), fw0.otherFishies,
-                    fw0.id, fw0.clockTick, fw0.snacks))
-            && t.checkExpect(this.fw0.onKeyEvent("down"),
-            new FishWorld(new PlayerFish(new CartPt(300, 30),
-                    pFish1.size, pFish1.score, pFish1.speed,
-                    pFish1.livesLeft, pFish1.direction), fw0.otherFishies,
-                    fw0.id, fw0.clockTick, fw0.snacks))
-            && t.checkExpect(this.fw0.onKeyEvent("left"),
-            new FishWorld(new PlayerFish(new CartPt(290, 20),
-                    pFish1.size, pFish1.score, pFish1.speed,
-                    pFish1.livesLeft, pFish1.direction), mt,
-                    20, 0, fw0.snacks))
-            && t.checkExpect(this.fw0.onKeyEvent("right"),
-            new FishWorld(new PlayerFish(new CartPt(310, 20),
-                    5, 0, 10,
-                    3, 0), mt,
-                    20, 0, fw0.snacks));
+  boolean testBigBang(Tester t) {
+    FishWorld fw = FishWorld1;
+    int worldWidth = 1600;
+    int worldHeight = 950;
+    double tickRate = 0.1;
+    return fw.bigBang(worldWidth, worldHeight, tickRate);
   }
+
+// FishWorld Tests
+//  boolean testOnKeyEvent(Tester t){
+//    return t.checkExpect(this.fw0.onKeyEvent("up"),
+//            new FishWorld(new PlayerFish(new CartPt(300, 10),
+//                    pFish1.size, pFish1.score, pFish1.speed,
+//                    pFish1.livesLeft, pFish1.direction), fw0.otherFishies,
+//                    fw0.id, fw0.clockTick, fw0.snacks))
+//            && t.checkExpect(this.fw0.onKeyEvent("down"),
+//            new FishWorld(new PlayerFish(new CartPt(300, 30),
+//                    pFish1.size, pFish1.score, pFish1.speed,
+//                    pFish1.livesLeft, pFish1.direction), fw0.otherFishies,
+//                    fw0.id, fw0.clockTick, fw0.snacks))
+//            && t.checkExpect(this.fw0.onKeyEvent("left"),
+//            new FishWorld(new PlayerFish(new CartPt(290, 20),
+//                    pFish1.size, pFish1.score, pFish1.speed,
+//                    pFish1.livesLeft, pFish1.direction), mt,
+//                    20, 0, fw0.snacks))
+//            && t.checkExpect(this.fw0.onKeyEvent("right"),
+//            new FishWorld(new PlayerFish(new CartPt(310, 20),
+//                    5, 0, 10,
+//                    3, 0), mt,
+//                    20, 0, fw0.snacks));
+//  }
 
   boolean testMoveFishiesFW(Tester t) {
     return t.checkExpect(this.fw0.moveFishiesFW(), fw0)
-            && t.checkExpect(this.fw1.moveFishiesFW(),
-            new FishWorld(pFish1, new ConsLoBackgroundFish(
-                    new BackgroundFish(999999999, new CartPt(0, 830), 100, 2, 1000, 1,
-                            new OverlayOffsetImage(
-                                    new EllipseImage(400, 200, OutlineMode.SOLID, Color.BLACK), -150, 0,
-                                    (new RotateImage(new EquilateralTriangleImage(200, OutlineMode.SOLID, Color.BLACK),
-                                            -270)))), mt), 20, 0, this.snacks1))
-            && t.checkExpect(this.fw2.moveFishiesFW(),
-            new FishWorld(pFish1, new ConsLoBackgroundFish(
-                    new BackgroundFish(10, new CartPt(1600, 0), 10, 20, 10, 0,
-                            new OverlayOffsetImage(
-                                    new EllipseImage(40, 20, OutlineMode.SOLID, Color.PINK), 20, 0,
-                                    (new RotateImage(new EquilateralTriangleImage(20, OutlineMode.SOLID, Color.PINK),
-                                            270)))),
-                    new ConsLoBackgroundFish(
-                            new BackgroundFish(999999999, new CartPt(0, 830), 100, 2, 1000, 1,
-                                    new OverlayOffsetImage(
-                                            new EllipseImage(400, 200, OutlineMode.SOLID, Color.BLACK), -150, 0,
-                                            (new RotateImage(new EquilateralTriangleImage(200, OutlineMode.SOLID, Color.BLACK),
-                                                    -270))))
-                            , mt)), 20, 0, this.snacks1));
+        && t.checkExpect(this.fw1.moveFishiesFW(), new FishWorld(pFish1, new ConsLoBackgroundFish(
+            new BackgroundFish(999999999, new CartPt(0, 830), 100, 2, 1000, 1,
+                new OverlayOffsetImage(new EllipseImage(400, 200, OutlineMode.SOLID, Color.BLACK),
+                    -150, 0,
+                    (new RotateImage(
+                        new EquilateralTriangleImage(200, OutlineMode.SOLID, Color.BLACK), -270)))),
+            mt), 20, 0, this.snacks1))
+        && t.checkExpect(this.fw2.moveFishiesFW(), new FishWorld(pFish1, new ConsLoBackgroundFish(
+            new BackgroundFish(10, new CartPt(1600, 0), 10, 20, 10, 0,
+                new OverlayOffsetImage(new EllipseImage(40, 20, OutlineMode.SOLID, Color.PINK), 20,
+                    0,
+                    (new RotateImage(
+                        new EquilateralTriangleImage(20, OutlineMode.SOLID, Color.PINK), 270)))),
+            new ConsLoBackgroundFish(new BackgroundFish(999999999, new CartPt(0, 830), 100, 2, 1000,
+                1,
+                new OverlayOffsetImage(new EllipseImage(400, 200, OutlineMode.SOLID, Color.BLACK),
+                    -150, 0,
+                    (new RotateImage(
+                        new EquilateralTriangleImage(200, OutlineMode.SOLID, Color.BLACK), -270)))),
+                mt)),
+            20, 0, this.snacks1));
   }
 
   boolean testCollision(Tester t) {
@@ -1387,49 +1273,248 @@ class ExamplesFishWorldProgram {
         && t.checkExpect(this.pileWorld2.returnCollidedFish(), pileLoFish2);
   }
 
-  boolean testCountGameFish(Tester t) {
-    return t.checkExpect(this.loBgFish1.countGameFish(), 1)
-            && t.checkExpect(this.loBgFish2.countGameFish(), 2)
-            && t.checkExpect(mtList.countGameFish(), 0)
-            && t.checkExpect(loFreebie1.countGameFish(), 0)
-            && t.checkExpect(loFreebie2.countGameFish(), 0)
-            && t.checkExpect(loFreebie3.countGameFish(), 1);
-  }
 
   boolean testUpdateClock(Tester t) {
     return t.checkExpect(this.FishWorld1.updateClock(),
-            new FishWorld(this.pFish1, loBgFish4, 3, 1, this.snacks1))
-            && t.checkExpect(new FishWorld(this.pFish1, loBgFish4, 3, 1, this.snacks1).updateClock(),
+        new FishWorld(this.pFish1, loBgFish4, 3, 1, this.snacks1))
+        && t.checkExpect(new FishWorld(this.pFish1, loBgFish4, 3, 1, this.snacks1).updateClock(),
             new FishWorld(this.pFish1, loBgFish4, 3, 2, this.snacks1));
   }
+ 
+  
+  // Background Fish tests
+  boolean testCalculateSizeGained(Tester t) {
+    return t.checkExpect(this.bgFish1.calculateSizeGained(10), 14)
+        && t.checkExpect(this.bgFish2.calculateSizeGained(10), 15);
+  }
+  
+  boolean testCalculateScoreGained(Tester t) {
+    return t.checkExpect(this.bgFish1.calculateScoreGained(10), 11)
+        && t.checkExpect(this.bgFish1.calculateScoreGained(10), 12);
+  }
 
+  boolean testCompareFishes(Tester t) {
+    return t.checkExpect(this.bgFish1.compareFishes(this.pFish1), true)
+        && t.checkExpect(this.bgFish2.compareFishes(this.pFish1), false);
+  }
+  
+  boolean testFishMatch(Tester t) {
+    return t.checkExpect(this.bgFish1.fishMatch(bgFish1), true)
+    && t.checkExpect(this.bgFish2.fishMatch(bgFish1), false);
+  }
+  
+  boolean testFishMatchHelper(Tester t) {
+    return t.checkExpect(this.bgFish1.fishMatchHelper(1), true)
+        && t.checkExpect(this.bgFish1.fishMatchHelper(10), false);
+  }
+  
+  boolean testDrawBGFish(Tester t) {
+    return t.checkExpect(this.bgFish1.drawBGfish(this.ws), this.ws.placeImageXY(new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
+          (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.BLUE),
+              -270))), 1600, 250))
+        && t.checkExpect(this.bgFish2.drawBGfish(this.ws), this.ws.placeImageXY(new BackgroundFish(2, new CartPt(1600, 400), 40, 10, 2, 0,
+      new OverlayOffsetImage(new EllipseImage(160, 80, OutlineMode.SOLID, Color.YELLOW), 80, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.YELLOW),
+              270)))), 1600, 400);
+  }
+  
+  boolean testMoveBGFish(Tester t) {
+    return t.checkExpect(this.bgFish1.moveBGFish(), new BackgroundFish(1, new CartPt(1620, 250), 20, 20, 1, 1,
+        new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
+            (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.BLUE),
+                -270)))))
+        && t.checkExpect(this.bgFish2.moveBGFish(), new BackgroundFish(2, new CartPt(1590, 400), 40, 10, 2, 0,
+      new OverlayOffsetImage(new EllipseImage(160, 80, OutlineMode.SOLID, Color.YELLOW), 80, 0,
+          (new RotateImage(new EquilateralTriangleImage(80, OutlineMode.SOLID, Color.YELLOW),
+              270)))));
+  }
+  
+  boolean testCheckCollisionHelper(Tester t) {
+    return t.checkExpect(this.bgFish1.checkCollisionHelper(new CartPt(100, 100), 10), true)
+        && t.checkExpect(this.bgFish2.checkCollisionHelper(new CartPt(900, 900), 20), false);
+  }
+  
+  boolean testIsFreebie(Tester t) {
+    return t.checkExpect(this.bgFish1.isFreebie(), false) 
+        && t.checkExpect(this.freebie.isFreebie(), true);
+  }
+  
+  boolean testIsFishBoss(Tester t) {
+    return t.checkExpect(this.bgFish1.isFishBoss(), false)
+        && t.checkExpect(this.fishBoss.isFishBoss(), true);
+  }
+  
+  
+  // LOBG FISH
+  /*
+   *  ILoBackgroundFish mtList = new MtLoBackgroundFish();
+  ILoBackgroundFish tempList = new ConsLoBackgroundFish(bgFish2, new MtLoBackgroundFish());
+  ILoBackgroundFish loBgFish1 = new ConsLoBackgroundFish(bgFish1, new MtLoBackgroundFish());
+  ILoBackgroundFish loBgFish2 = new ConsLoBackgroundFish(bgFish2, loBgFish1);
+  ILoBackgroundFish loBgFish3 = new ConsLoBackgroundFish(bgFish3, loBgFish2);
+  ILoBackgroundFish loBgFish4 = new ConsLoBackgroundFish(fishBoss, loBgFish3);
+
+   */
+  boolean testEat(Tester t) {
+    return t.checkExpect(this.loBgFish1.eat(this.bgFish1), this.mtList)
+        && t.checkExpect(this.loBgFish2.eat(this.bgFish1), this.loBgFish1)
+        && t.checkExpect(this.mtList.eat(this.bgFish1), this.mtList);
+  }
+  
+  boolean testLoDrawBGFish(Tester t) {
+    return t.checkExpect(this.loBGfish1.drawBGfish(this.ws), this.ws.placeImageXY(new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
+        (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.BLUE),
+            -270))), 1600, 250))
+        && t.checkExpect(this.mtList.drawBGfish(this.ws), this.ws);
+  }
+  
+  
+  boolean testCheckCollision(Tester t) {
+    return t.checkExpect(this.loBGfish1.checkCollision(new CartPt(900, 900), 10), this.mtList)
+        && t.checkExpect(this.loBGfish1.checkCollision(new CartPt(90, 90), 10), this.loBgFish1);
+  }
+  
+  boolean testCollisionUpdate(Tester t) {
+    return t.checkExpect(this.mtList.collisionUpdate(this.FishWorld1), this.FishWorld1)
+        && t.checkExpect(this.loBgFish1.collisionUpdate(this.FishWorld1), this.FishWorld1);
+  }
+  
+  // NEEDS RANDOM
+  boolean testAddToLoBG(Tester t) {
+    
+  }
+  
+  boolean testMoveFishiesList(Tester t) {
+    return t.checkExpect(this.mtList.moveFishiesList(), this.mtList)
+        && t.checkExpect(this.loBgFish1.moveFishiesList(), new ConsLoBackgroundFish(new BackgroundFish(1, new CartPt(1620, 250), 20, 20, 1, 1,
+        new OverlayOffsetImage(new EllipseImage(80, 40, OutlineMode.SOLID, Color.BLUE), -40, 0,
+            (new RotateImage(new EquilateralTriangleImage(40, OutlineMode.SOLID, Color.BLUE),
+                -270)))), this.mtList));
+  }
+  
+  boolean testMaxSpawn(Tester t) {
+    return t.checkExpect(this.loBGfish0.maxSpawn(), false)
+        && t.checkExpect(this.mtList.maxSpawn(), false);
+  }
+  
+  boolean testCountGameFish(Tester t) {
+    return t.checkExpect(this.loBgFish1.countGameFish(), 1)
+        && t.checkExpect(this.loBgFish2.countGameFish(), 2)
+        && t.checkExpect(mtList.countGameFish(), 0) && t.checkExpect(loFreebie1.countGameFish(), 0)
+        && t.checkExpect(loFreebie2.countGameFish(), 0)
+        && t.checkExpect(loFreebie3.countGameFish(), 1);
+  }
+  
   boolean testIsBossDead(Tester t) {
     return t.checkExpect(this.loBgFish4.isBossDead(), false)
-            && t.checkExpect(this.loBgFish2.isBossDead(), true)
-            && t.checkExpect(this.mtList.isBossDead(), true);
+        && t.checkExpect(this.loBgFish2.isBossDead(), true)
+        && t.checkExpect(this.mtList.isBossDead(), true);
   }
-  boolean testIsBoss(Tester t) {
-    return t.checkExpect(this.fishBoss.isFishBoss(), true)
-            && t.checkExpect(this.bgFish1.isFishBoss(), false);
+  
+  boolean testAddFreebie(Tester t) { // NEEDS RANDOM
+    return t.checkExpect(this.loBgFish1.addFreebie(10), new ConsLoBackgroundFish(new BackgroundFish(10,
+        new CartPt(randX.nextInt(1600), randY.nextInt(950)), 5, 20, 1, randDir.nextInt(1),
+        new OverlayOffsetImage(new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE), 7.5, 0,
+            (new RotateImage(new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
+                270)))),
+        this.loBgFish1));
   }
+  
+  
+  // ASnack Tests
+
+  // tests .snackMatch(ASnack)
+  boolean testSnackMatch(Tester t) {
+    return t.checkExpect(this.bad1.snackMatch(this.bad1), true)
+        && t.checkExpect(this.bad1.snackMatch(this.speed1), false);
+  }
+
+  // tests .checkSnackCollision(CartPt, pfSize)
+  boolean testCheckSnackCollision(Tester t) {
+    return t.checkExpect(this.bad2.checkSnackCollision(new CartPt(200, 200), 8), false)
+        && t.checkExpect(this.bad1.checkSnackCollision(new CartPt(100, 100), 9), true);
+  }
+
+  // tests drawSnacks
+  boolean testDrawSnacks(Tester t) {
+    return t.checkExpect(this.speed1.drawSnacks(this.ws),
+        ws.placeImageXY(new OverlayImage(new TextImage("O", Color.BLACK),
+            new CircleImage(30, OutlineMode.SOLID, Color.BLUE)), 90, 90))
+        && t.checkExpect(null, null);
+  }
+
+  // tests applyEffect
+  boolean testApplyEffect(Tester t) {
+    return t
+        .checkExpect(this.speed1.applyEffect(this.pFish1), new PlayerFish(
+            new CartPt(90, 90), 5, 0, 15, 3, 0, 0, new OverlayOffsetImage(new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE),
+                    5 * 1.5, 0,
+                    (new RotateImage(
+                        new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE), 270))))))
+        && t.checkExpect(this.bad1.applyEffect(this.pFish1), new PlayerFish(new CartPt(100, 100), 4,
+            0, 10, 3, 0, 0, new OverlayOffsetImage(new EllipseImage(16, 8, OutlineMode.SOLID, Color.ORANGE),
+                    4 * 1.5, 0,
+                    (new RotateImage(
+                        new EquilateralTriangleImage(8, OutlineMode.SOLID, Color.ORANGE), 270))))))
+        && t.checkExpect(this.score1.applyEffect(this.pFish1),
+            new PlayerFish(new CartPt(200, 200), 5, 2, 10, 3, 0, 0, new OverlayOffsetImage(
+                        new EllipseImage(20, 10, OutlineMode.SOLID, Color.ORANGE), 5 * 1.5, 0,
+                        (new RotateImage(
+                            new EquilateralTriangleImage(10, OutlineMode.SOLID, Color.ORANGE),
+                            270)))));
+  }
+
+  // LOSNACK Tests
+  boolean testGenerateSnack(Tester t) {
+    Random rand = new Random(5);
+    return t.checkExpect(this.snacks1.generateSnack(10, 7), new ConsLoSnacks(
+        new SpeedSnacks(7, new CartPt(rand.nextInt(1600), rand.nextInt(900))), this.snacks1));
+  }
+
+  boolean testEatSnack(Tester t) {
+    return t.checkExpect(this.mtsnack.eatSnack(this.bad1), this.mtsnack)
+        && t.checkExpect(this.snacks1.eatSnack(this.speed1),
+            new ConsLoSnacks(this.bad1, new ConsLoSnacks(this.score1, new MtLoSnacks())));
+  }
+
+  boolean testLoDrawSnacks(Tester t) {
+    return t.checkExpect(this.mtsnack.drawSnacks(this.ws), this.ws)
+        && t.checkExpect(this.snacks1.drawSnacks(this.ws), this.ws.placeImageXY(new OverlayImage(new TextImage("O", Color.BLACK),
+      new CircleImage(30, OutlineMode.SOLID, Color.BLUE)), 90, 90).placeImageXY(new OverlayImage(new TextImage("X", Color.BLACK),
+          new CircleImage(30, OutlineMode.SOLID, Color.RED)), 100, 100).placeImageXY(new OverlayImage(new TextImage("!!", Color.BLACK),
+      new CircleImage(30, OutlineMode.SOLID, Color.GREEN)), 200, 200));
+  }
+
+  boolean testLoCheckSnackCollision(Tester t) {
+    return t.checkExpect(this.mtsnack.checkSnackCollision(this.pFish1), this.mt)
+        && t.checkExpect(this.snacks1.checkSnackCollision(this.pFish1), this.mt);
+  }
+
+  boolean testSnackUpdate(Tester t) {
+    return t.checkExpect(this.mtsnack.snackUpdate(this.FishWorld1), this.FishWorld1) 
+        && t.checkExpect(this.snacks1.snackUpdate(this.FishWorld1), this.FishWorld1);
+  }
+
 }
 
 /*
  * info for README
  * 
  * 
- * Feeding Frenzy:
- * Eric Kitagawa & Emma Shum
- * Fundamentals of Computer Science II - Prof Razzaq
+ * Feeding Frenzy: Eric Kitagawa & Emma Shum Fundamentals of Computer Science II
+ * - Prof Razzaq
  * 
- * How to play:
- * - Use arrow keys to move the 'player fish' (orange fish)
- * - 'eat' other fish by running into them.
- * - you can only eat fish that are smaller than you
- * - you have 3 lives
- * - if you run into a fish that is bigger than you, a life will be removed
- * - once you are out of lives, the game is over
- * - you can win by becoming the biggest fish!
+ * How to play: - Use arrow keys to move the 'player fish' (orange fish) - 'eat'
+ * other fish by running into them. - you can only eat fish that are smaller
+ * than you - you have 3 lives - if you run into a fish that is bigger than you,
+ * a life will be removed - once you are out of lives, the game is over - you
+ * can win by becoming the biggest fish! - there will always be a 'freebie' fish
+ * that is smaller than you - eating snacks will give you boosts, but watch out
+ * for bad snacks! those will decrease your size. - you are given a grace period
+ * (10 ticks) after colliding with a fish bigger than you.
+ * - run the specified big bang please!
+ * - also note that the window size is not scalable :(
+ * 
  * 
  * 
  */
